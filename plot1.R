@@ -8,12 +8,17 @@ log <- function(..., file="logfile.txt") {
 }
 
 # load dependencies and warn the user
-load_library <- function(lib) {
-  if (!(lib %in% rownames(installed.packages()))) {
-    stop("Please install the package '", lib, "' and try this script again.", sep="")
-  } else {
-    library(lib, character.only=TRUE)
-  }
+load_library <- function(lib, halt=FALSE) {
+    if (!(lib %in% rownames(installed.packages()))) {
+        if (halt) {
+            stop("Please install the package '", lib, "' and try this script again.", sep="")
+        } else {
+            return(FALSE)
+        }
+    } else {
+        library(lib, character.only=TRUE, warn.conflicts = FALSE)
+        return(TRUE)
+    }
 }
 
 # make a repeating string, inspired by the makeNstr from the Hmisc package
@@ -21,6 +26,11 @@ load_library <- function(lib) {
 makeNstr <- function(str, num) {
   if (num == 0) return("")
   paste(rep(str, num), collapse="")
+}
+
+# print numbers with separators
+pretty_num <- function(n, mark = ",") {
+    return format(n, big.mark = mark)
 }
 
 # create a horizontal rule
@@ -33,31 +43,94 @@ h <- function(..., space_above=0, space_below=0, rule=60) {
   log(makeNstr("\n", space_above), hr(l=rule), ..., "\n", hr(l=rule), makeNstr("\n", space_below))
 }
 
+# estimate memory usage in bytes for a data frame from file on disk
+# if you just use the defaults, you get back the estimated size of 1 row
+estimate_memory_size <- function(file, n_samples = 100, n_rows = 100, pretty = FALSE) {
+    
+    # for pretty printing, optional
+    pretty_lib <- load_library("gdata")
+    
+    val <- 0
+    if (file.exists(file)) {
+        sample <- read.table(file, nrows = n_samples)
+        val <- n_rows * object.size(sample)[1]
+    }
+    
+    if (pretty) {
+        if (pretty_lib) {
+            return(humanReadable(val))
+        } else {
+            return(paste(pretty_num(val), " bytes", sep=""))
+        }        
+    } else {
+        return(val)
+    }
+}
+
+# read lines from text file, optionally testing each line with fun(line)
+# to decide whether to keep it or not
+
+read_matching_lines <- function(file, test_function = function(l) TRUE, debug = TRUE) {
+    if (!file.exists(file)) {
+        return("")
+    }
+    
+    con  <- file(file, open = "r")
+    my.data <- character()
+    count <- 0
+    if (debug) {
+        cat("X")
+    }
+
+    while (length(one.line <- readLines(con, n = 1, warn = FALSE)) > 0) {
+        count <- count + 1
+        if (debug) {
+            
+            if (count %% 2 == 0) {
+                cat("\b-")
+            } else if (count %% 3 == 0) {
+                cat("\b/")
+            } else {
+                cat("\b|")
+            }
+        }
+        if (test_function(one.line)) {
+            my.data <- c(my.data, one.line)
+        }
+    }
+    if (debug) {
+        log("\nRead ", pretty_num(count), " lines from file")
+    }
+    
+    close(con)
+    return(my.data)
+}
+
 # download and extract files from Internet
 
 get_data <- function(data_url, zipfile, data_file) {
-
-  # Skip if we have already have the data file
-  if (!file.exists(data_file)) {
-    h("Download and Extract Source Data")
-    
-    # Skip download if we already have the zip file
-    if (!file.exists(zipfile)) {
-      log("Downloading compressed data set from ", data_url)
-      res <- download.file(url=data_url, destfile=zipfile, method="curl", mode="w")
+    # Skip if we have already have the data file
+    if (!file.exists(data_file)) {
+        h("Download and Extract Source Data")
+        
+        # Skip download if we already have the zip file
+        if (!file.exists(zipfile)) {
+            log("Downloading compressed data set from ", data_url)
+            res <- download.file(url=data_url, destfile=zipfile, method="curl", mode="w")
+        }
+        
+        # Double-check that download completed and decompress
+        if (!file.exists(zipfile)) {
+            stop("Unable to download the data from the Internet.\n\n")
+        } else {
+            log("Extracting compressed data to ", data_file)      
+            res <- unzip(zipfile=zipfile,overwrite=FALSE)
+            if (!file.exists(data_file)) {
+                stop("ERROR. Problem decompressing zip file\n\n")
+            } 
+        }
     }
-    
-    # Double-check that download completed and decompress
-    if (!file.exists(zipfile)) {
-      stop("Unable to download the data from the Internet.\n\n")
-    } else {
-      log("Extracting compressed data to ", data_file)      
-      res <- unzip(zipfile=zipfile,overwrite=FALSE)
-      if (!file.exists(data_file)) {
-        stop("ERROR. Problem decompressing zip file\n\n")
-      }
-    }
-  }  
+    return(TRUE)
 }
 
 #####
@@ -71,9 +144,17 @@ main <- function() {
   zipfile <- "household_power_consumption.zip"
   data_file <- "household_power_consumption.txt"
   png_file <- "plot1.png"
+  data_row_count <- 2075259
+  line_match_func <- function(l) grepl(pattern="^0?[12]\\/2\\/2007", x = l)
 
-  get_data(data_url = data_url, zipfile = zipfile, data_file = data_file )
   h("Process Extracted Data")
+  get_data(data_url = data_url, zipfile = zipfile, data_file = data_file )
+  log("Decompressed data file found in current working directory")
+  log("Estimated memory usage to read ", pretty_num(data_row_count), " records from ", data_file, " would be ", estimate_memory_size(data_file, n_rows = data_row_count, pretty = TRUE))
+  log("Reading data file, skipping lines outside of required date range (this may take a while)")
+  
+  df <- read_matching_lines(data_file, test_function = line_match_func)
+  log("Read in ", pretty_num(length(df)), " matching rows of data from file")
   
   png(filename = png_file, height = 480, width = 480)
   hist(rnorm(1000))
@@ -84,6 +165,8 @@ main <- function() {
   } else {
     stop("ERROR. Unable to create ", png_file)
   }
+  
+  return(df)
 }
 
-main()
+res <- main()
