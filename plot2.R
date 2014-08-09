@@ -44,7 +44,7 @@ get_data <- function(data_url, zipfile, data_file) {
     # Skip download if we already have the zip file
     if (!file.exists(zipfile)) {
       log("Downloading compressed data set from ", data_url)
-      res <- download.file(url=data_url, data_file=zipfile, method="curl", mode="w")
+      res <- download.file(url=data_url, destfile=zipfile, method="curl", mode="w")
     }
     
     # Double-check that download completed and decompress
