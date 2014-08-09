@@ -1,3 +1,29 @@
+###########
+# Exploratory Data Analysis
+# -------
+# Course Project 1
+# https://github.com/rdpeng/ExData_Plotting1
+#
+# Work by: Allen Hammock
+#  Github: brainvat
+# Project: https://github.com/brainvat/ExData_Plotting1/
+#
+# Usage:
+#
+#   Source this file in your R environment to execute.
+#   Code will download data files if uncompressed source
+#   data is not found in the current working directory.
+#   Output of PNG file will be saved to current working
+#   directory.
+#
+#   Examine other data outputs with str(res) if you are
+#   executing this code in a REPL like RStudio.
+#
+#   Skip down to main() function to see where the execution
+#   really starts.
+#
+#######
+
 #####
 # Utility Functions
 ##
@@ -30,7 +56,7 @@ makeNstr <- function(str, num) {
 
 # print numbers with separators
 pretty_num <- function(n, mark = ",") {
-    return format(n, big.mark = mark)
+    return(format(n, big.mark = mark))
 }
 
 # create a horizontal rule
@@ -133,40 +159,81 @@ get_data <- function(data_url, zipfile, data_file) {
     return(TRUE)
 }
 
+make_graph <- function(lines, png_file = "output.png") {
+
+    vec <- sapply(X=lines,FUN = function(x) sapply(X=strsplit(x, ";"), FUN = function(x) as.numeric(x[3]), USE.NAMES = FALSE, simplify = "vector"))
+    names(vec) <- NULL
+
+    # using base graphics system, produce the histogram
+    # match Title, X and Y labels, and bar colors
+    # to look like figure/unnamed-chunk-2.png
+    
+    png(filename = png_file, height = 480, width = 480)
+    histinfo <- hist(vec, main="Global Active Power", col="red", xlab="Global Active Power (kilowatts)", ylab = "Frequency", )
+    dev.off()
+    
+    if (file.exists(png_file)) {
+        log("Successfully created ", png_file)
+    } else {
+        stop("ERROR. Unable to create ", png_file)
+    }
+    
+    return(list(lines=lines, data=vec, hist_info=histinfo))
+}
+
 #####
 # Main program
 ##
 
-main <- function() {
+main <- function(global_data = NULL) {
 
-  # download the data if has not already been retrieved
-  data_url <- "https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2Fhousehold_power_consumption.zip"
-  zipfile <- "household_power_consumption.zip"
-  data_file <- "household_power_consumption.txt"
-  png_file <- "plot1.png"
-  data_row_count <- 2075259
-  line_match_func <- function(l) grepl(pattern="^0?[12]\\/2\\/2007", x = l)
-
-  h("Process Extracted Data")
-  get_data(data_url = data_url, zipfile = zipfile, data_file = data_file )
-  log("Decompressed data file found in current working directory")
-  log("Estimated memory usage to read ", pretty_num(data_row_count), " records from ", data_file, " would be ", estimate_memory_size(data_file, n_rows = data_row_count, pretty = TRUE))
-  log("Reading data file, skipping lines outside of required date range (this may take a while)")
-  
-  df <- read_matching_lines(data_file, test_function = line_match_func)
-  log("Read in ", pretty_num(length(df)), " matching rows of data from file")
-  
-  png(filename = png_file, height = 480, width = 480)
-  hist(rnorm(1000))
-  dev.off()
-  
-  if (file.exists(png_file)) {
-    log("Successfully created ", png_file)
-  } else {
-    stop("ERROR. Unable to create ", png_file)
-  }
-  
-  return(df)
+    # download the data if has not already been retrieved
+    # this saves a lot of time if you are running this
+    # script over and over, for example during development
+    
+    data_url <- "https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2Fhousehold_power_consumption.zip"
+    zipfile <- "household_power_consumption.zip"
+    data_file <- "household_power_consumption.txt"
+    png_file <- "plot1.png"
+    data_row_count <- 2075259
+    line_match_func <- function(l) grepl(pattern="^0?[12]\\/2\\/2007", x = l)
+    
+    h("Download and Extract Data")
+    get_data(data_url = data_url, zipfile = zipfile, data_file = data_file )
+    log("Decompressed data file found in current working directory")
+    log("Estimated memory usage to read ", pretty_num(data_row_count), " records from ", data_file, " would be ", estimate_memory_size(data_file, n_rows = data_row_count, pretty = TRUE))
+    log("Reading data file, skipping lines outside of required date range (this may take a while)")
+    
+    # since data processing takes so long, when developing this
+    # script it's useful to skip this process if you know
+    # it's working fine
+    
+    if (!is.null(global_data)) {
+        log("Using global data called on main()")
+        lines <- global_data[["lines"]]
+    } else {
+        lines <- read_matching_lines(data_file, test_function = line_match_func)
+        log("Read in ", pretty_num(length(lines)), " matching rows of data from file")        
+    }
+    
+    # Now we can extract just the column we want to produce
+    # the histogram
+    
+    h("Download and Extract Data")
+    log("Producting histogram from Global Active Power observations")    
+    res <- make_graph(lines, png_file = png_file)
+    
+    # return the lines, the data vector, and the
+    # histogram object back to the global environment
+    # so we can inspect it, very useful during development
+    
+    return(res)
 }
 
 res <- main()
+
+# run it again, but without all of the tedious waiting
+# to load the original data file!
+#
+# my_res <- main(res)
+# my_res <- make_graph(res[["lines"]], png_file = "my_res.png")
