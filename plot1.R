@@ -175,7 +175,6 @@ make_graph <- function(lines, png_file = "output.png", watermark = FALSE) {
     histinfo <- hist(vec, main="Global Active Power", col="red", xlab="Global Active Power (kilowatts)", ylab = "Frequency", )
     watermark <- watermark && load_library("RCurl", halt = FALSE) && load_library("png")
     if (watermark) {
-        cat("Let's do this!\n")
         me.png.url <- "https://avatars3.githubusercontent.com/u/7524494?v=2&s=460"
         me.png <- readPNG(getURLContent(me.png.url))
         tmp <- par('usr')
