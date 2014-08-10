@@ -1,7 +1,9 @@
 ###########
 # Exploratory Data Analysis
 # -------
-# Course Project 1
+# Course Project 1: plot1.R
+#
+# Assignment Info:
 # https://github.com/rdpeng/ExData_Plotting1
 #
 # Work by: Allen Hammock
@@ -159,8 +161,8 @@ get_data <- function(data_url, zipfile, data_file) {
     return(TRUE)
 }
 
-make_graph <- function(lines, png_file = "output.png") {
-
+make_graph <- function(lines, png_file = "output.png", watermark = FALSE) {
+    
     vec <- sapply(X=lines,FUN = function(x) sapply(X=strsplit(x, ";"), FUN = function(x) as.numeric(x[3]), USE.NAMES = FALSE, simplify = "vector"))
     names(vec) <- NULL
 
@@ -169,7 +171,16 @@ make_graph <- function(lines, png_file = "output.png") {
     # to look like figure/unnamed-chunk-2.png
     
     png(filename = png_file, height = 480, width = 480)
+
     histinfo <- hist(vec, main="Global Active Power", col="red", xlab="Global Active Power (kilowatts)", ylab = "Frequency", )
+    watermark <- watermark && load_library("RCurl", halt = FALSE) && load_library("png")
+    if (watermark) {
+        cat("Let's do this!\n")
+        me.png.url <- "https://avatars3.githubusercontent.com/u/7524494?v=2&s=460"
+        me.png <- readPNG(getURLContent(me.png.url))
+        tmp <- par('usr')
+        rasterImage(me.png, tmp[1]*0.25, tmp[3]*0.25, tmp[2]*0.25, tmp[4]*0.25)
+    }
     dev.off()
     
     if (file.exists(png_file)) {
@@ -230,7 +241,7 @@ main <- function(global_data = NULL) {
     return(res)
 }
 
-res <- main()
+#res <- main()
 
 # run it again, but without all of the tedious waiting
 # to load the original data file!
