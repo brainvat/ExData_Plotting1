@@ -81,7 +81,7 @@ estimate_memory_size <- function(file, n_samples = 100, n_rows = 100, pretty = F
     val <- 0
     if (file.exists(file)) {
         sample <- read.table(file, nrows = n_samples)
-        val <- n_rows * object.size(sample)[1]
+        val <- n_rows * object.size(sample)[1] / n_samples
     }
     
     if (pretty) {
