@@ -266,7 +266,7 @@ main <- function(global_data = NULL) {
     return(res)
 }
 
-#res <- main()
+res <- main()
 
 # run it again, but without all of the tedious waiting
 # to load the original data file!
